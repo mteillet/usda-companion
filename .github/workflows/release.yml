@@ -1,0 +1,41 @@
+name: Release
+
+# Push a tag like v0.0.16 to build the .vsix and publish a GitHub Release.
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - run: npm ci
+      - run: npm run compile
+      - run: npm test
+
+      - name: Package (.vsix)
+        run: npx --yes @vscode/vsce package -o "usda-companion-${{ github.ref_name }}.vsix"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: usda-companion-*.vsix
+          generate_release_notes: true
+
+      # Optional: also publish to the VS Code Marketplace / Open VSX.
+      # Add a VSCE_PAT (and/or OVSX_PAT) secret, then uncomment:
+      # - name: Publish to Marketplace
+      #   run: npx --yes @vscode/vsce publish -p "${{ secrets.VSCE_PAT }}"
+      # - name: Publish to Open VSX
+      #   run: npx --yes ovsx publish "usda-companion-${{ github.ref_name }}.vsix" -p "${{ secrets.OVSX_PAT }}"

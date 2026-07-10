@@ -1,0 +1,15 @@
+.vscode/**
+src/**
+node_modules/**
+.gitignore
+.vscodeignore
+tsconfig.json
+**/*.map
+**/*.ts
+sample.usda
+sample-lint.usda
+.github/**
+test/**
+.editorconfig
+CONTRIBUTING.md
+CHANGELOG_INTERNAL.md

@@ -1,0 +1,270 @@
+{
+  "name": "usda-companion",
+  "displayName": "USDA Companion",
+  "description": "Outline, folding and tooling that fills the gaps of the Animal Logic USD highlighter for .usda files.",
+  "icon": "icon.png",
+  "version": "0.0.19",
+  "publisher": "usda-companion",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.75.0"
+  },
+  "categories": [
+    "Programming Languages",
+    "Linters",
+    "Other"
+  ],
+  "keywords": [
+    "usd",
+    "usda",
+    "pixar",
+    "openusd",
+    "vfx"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/TONPSEUDO/usda-companion"
+  },
+  "main": "./out/extension.js",
+  "activationEvents": [
+    "onLanguage:usd",
+    "workspaceContains:**/*.usda",
+    "onCommand:usda.jumpToUsd",
+    "workspaceContains:**/*.usd"
+  ],
+  "contributes": {
+    "configuration": {
+      "title": "USDA Companion",
+      "properties": {
+        "usda.usdcat.command": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "usdcat"
+          ],
+          "markdownDescription": "Command used to run `usdcat` (flatten/preview). Wrap it in your studio launcher if needed, e.g. `[\"rez-env\", \"usd\", \"--\", \"usdcat\"]`."
+        },
+        "usda.usdchecker.command": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "usdchecker"
+          ],
+          "markdownDescription": "Command used to run `usdchecker`."
+        },
+        "usda.usdview.command": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "usdview"
+          ],
+          "markdownDescription": "Command used to launch `usdview`."
+        },
+        "usda.python.command": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "python"
+          ],
+          "markdownDescription": "Python command that can `from pxr import Usd`. Used by upcoming schema/composition features (P1+)."
+        },
+        "usda.assetResolver.command": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "usdresolve"
+          ],
+          "markdownDescription": "Command that resolves an asset path (e.g. a custom `asset:` URI) to a filesystem path; the path is appended as the final argument. Default `usdresolve`. Must run in an environment where your resolver plugin is loaded (the same one where `usdchecker` resolves your custom scheme); wrap it like the other tools if needed."
+        },
+        "usda.schema.generatedSchemaPaths": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [],
+          "markdownDescription": "Paths to `generatedSchema.usda` files describing custom schemas (e.g. your `mg`-prefixed types). Used by upcoming schema-aware completion/hover (P1)."
+        },
+        "usda.fold.propertyGroups": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "collection:",
+            "material:binding"
+          ],
+          "markdownDescription": "Property-name namespace prefixes whose **consecutive** declarations collapse as a single fold region (great for long `collection:*` or `material:binding*` blocks). Matching is by the start of the property name, so `material:binding` also covers `material:binding:collection:*`. Add your studio's render-param binding prefix here."
+        },
+        "usda.lint.enabled": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "Enable fast text-based lints (xformOpOrder ↔ defined `xformOp:*` consistency, duplicate `def` siblings). No USD runtime required."
+        },
+        "usda.diagnostics.usdcheckerOnSave": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "Run `usdchecker` (via `usda.usdchecker.command`) on save and show its findings inline in the Problems panel. Requires the resolver environment (the same one where `usdchecker` resolves your assets)."
+        },
+        "usda.jumpToUsd.include": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "**/*.usda",
+            "**/*.usd"
+          ],
+          "markdownDescription": "Globs / extensions recognised as USD by **USDA: Jump to USD File**. The command first looks at your **open editor tabs**; if none are USD it falls back to searching the workspace folder(s) with these globs. Add `**/*.usdc` / `**/*.usdz` to also match binary crates."
+        },
+        "usda.jumpToUsd.exclude": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "**/node_modules/**",
+            "**/.git/**"
+          ],
+          "markdownDescription": "Globs excluded from **USDA: Jump to USD File** search."
+        },
+        "usda.jumpToUsd.openBestWhenMultiple": {
+          "type": "boolean",
+          "default": false,
+          "markdownDescription": "When several USD files match (open tabs or folder search), open the best one directly instead of showing a picker. For folder search the score favours files at the root, files whose name matches the folder, and `.usda` over `.usd`; for open tabs it picks the first."
+        },
+        "usda.deactivations.pruneEmptyParents": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "After deleting deactivation blocks (`active = false`), also remove the `over` scaffolding that held them if it is now empty (e.g. a leftover `over \"Vars\" {}`). Only `over` prims that were ancestors of a deleted block, carry no metadata of their own, and end up with an empty body are removed."
+        }
+      }
+    },
+    "commands": [
+      {
+        "command": "usda.flatten",
+        "title": "Flatten (usdcat --flatten)",
+        "category": "USDA"
+      },
+      {
+        "command": "usda.check",
+        "title": "Run usdchecker",
+        "category": "USDA"
+      },
+      {
+        "command": "usda.openInUsdview",
+        "title": "Open in usdview",
+        "category": "USDA"
+      },
+      {
+        "command": "usda.reloadSchemas",
+        "title": "Reload schemas",
+        "category": "USDA"
+      },
+      {
+        "command": "usda.openAsset",
+        "title": "Open asset under cursor",
+        "category": "USDA"
+      },
+      {
+        "command": "usda.clearResolveCache",
+        "title": "Clear asset-resolution cache",
+        "category": "USDA"
+      },
+      {
+        "command": "usda.jumpToUsd",
+        "title": "Jump to USD File",
+        "category": "USDA"
+      },
+      {
+        "command": "usda.listDeactivations",
+        "title": "List deactivated Vars",
+        "category": "USDA"
+      }
+    ],
+    "menus": {
+      "commandPalette": [
+        {
+          "command": "usda.flatten",
+          "when": "editorLangId == usd || resourceExtname == .usda || resourceExtname == .usd"
+        },
+        {
+          "command": "usda.check",
+          "when": "editorLangId == usd || resourceExtname == .usda || resourceExtname == .usd"
+        },
+        {
+          "command": "usda.openInUsdview",
+          "when": "editorLangId == usd || resourceExtname == .usda || resourceExtname == .usd"
+        },
+        {
+          "command": "usda.openAsset",
+          "when": "editorLangId == usd || resourceExtname == .usda || resourceExtname == .usd"
+        },
+        {
+          "command": "usda.listDeactivations",
+          "when": "editorLangId == usd || resourceExtname == .usda || resourceExtname == .usd"
+        }
+      ],
+      "explorer/context": [
+        {
+          "command": "usda.jumpToUsd",
+          "when": "explorerResourceIsFolder",
+          "group": "navigation@90"
+        }
+      ]
+    },
+    "keybindings": [
+      {
+        "command": "usda.jumpToUsd",
+        "key": "ctrl+alt+j",
+        "mac": "cmd+alt+j"
+      },
+      {
+        "command": "usda.listDeactivations",
+        "key": "ctrl+alt+p",
+        "mac": "cmd+alt+p",
+        "when": "editorTextFocus && (editorLangId == usd || resourceExtname == .usda || resourceExtname == .usd)"
+      }
+    ],
+    "languages": [
+      {
+        "id": "usd",
+        "aliases": [
+          "USD",
+          "usd"
+        ],
+        "extensions": [
+          ".usda",
+          ".usd"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ]
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -w -p ./",
+    "pretest": "npm run compile",
+    "test": "node test/run.js",
+    "package": "vsce package"
+  },
+  "devDependencies": {
+    "@types/node": "^18.19.0",
+    "@types/vscode": "^1.75.0",
+    "typescript": "^5.4.0"
+  },
+  "bugs": {
+    "url": "https://github.com/TONPSEUDO/usda-companion/issues"
+  },
+  "homepage": "https://github.com/TONPSEUDO/usda-companion#readme"
+}

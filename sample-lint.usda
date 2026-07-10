@@ -1,0 +1,28 @@
+#usda 1.0
+(
+    defaultPrim = "rig"
+)
+
+def Xform "rig"
+{
+    double3 xformOp:translate = (0, 0, 0)
+    float xformOp:rotateY = 45
+    float xformOp:scale = 2
+    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateX"]
+    # xformOpOrder lists rotateX (typo for rotateY, undefined here) -> warning
+    # rotateY and scale are defined but not in the order        -> warnings
+}
+
+def Xform "rig_ok"
+{
+    double3 xformOp:translate = (1, 2, 3)
+    uniform token[] xformOpOrder = ["xformOp:translate"]
+    # this one is consistent -> no warning
+}
+
+def Scope "looks"
+{
+    def Material "m" { }
+    def Material "m" { }
+    # duplicate def "m" under the same scope -> warning on both
+}

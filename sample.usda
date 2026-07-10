@@ -1,0 +1,105 @@
+#usda 1.0
+(
+    defaultPrim = "shot"
+    metersPerUnit = 0.01
+    upAxis = "Y"
+    subLayers = [
+        @./lighting.usda@
+    ]
+)
+
+def Xform "shot" (
+    kind = "assembly"
+    customData = {
+        string note = "braces { and } inside strings must be ignored"
+    }
+)
+{
+    def Xform "lights" (
+        kind = "group"
+    )
+    {
+        # `asset:` is a placeholder for whatever custom URI scheme your pipeline
+        # uses; point `usda.assetResolver.command` at your resolver to follow it.
+        def SphereLight "key" (
+            prepend references = @asset:/lib/lights/softbox.usda@</light>
+        )
+        {
+            float inputs:exposure = 9.5
+            color3f inputs:color = (1, 0.85, 0.7)
+            double3 xformOp:translate = (4, 6, 3)
+            float xformOp:rotateX = -35
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateX"]
+
+            variantSet "intensity" = {
+                "beauty" {
+                    over "key" {
+                        float inputs:exposure = 10.2
+                    }
+                }
+                "lowkey" {
+                    over "key" {
+                        float inputs:exposure = 7.0
+                    }
+                }
+            }
+        }
+
+        def SphereLight "fill"
+        {
+            float inputs:exposure = 7.2
+            color3f inputs:color = (0.7, 0.8, 1)
+            float inputs:radius.timeSamples = {
+                0: 1.0,
+                24: 0.5,
+            }
+        }
+
+        over "rim"
+        {
+            token visibility = "invisible"
+        }
+    }
+
+    def Scope "linking" (
+        prepend apiSchemas = ["CollectionAPI"]
+    )
+    {
+        uniform token collection:key:expansionRule = "expandPrims"
+        rel collection:key:includes = [ </shot/lights/key> ]
+        uniform token collection:fill:expansionRule = "expandPrims"
+        rel collection:fill:includes = [ </shot/lights/fill> ]
+        uniform token collection:rim:expansionRule = "expandPrims"
+        rel collection:rim:includes = [
+            </shot/lights/rim>,
+            </shot/lights/key>,
+        ]
+        uniform token collection:all:expansionRule = "expandPrims"
+        rel collection:all:includes = [ </shot/lights> ]
+    }
+
+    def Xform "geo" (
+        prepend apiSchemas = ["MaterialBindingAPI"]
+    )
+    {
+        rel material:binding = </shot/looks/softbox_mtl>
+        rel material:binding:preview = </shot/looks/softbox_mtl>
+        rel material:binding:collection:setA = [ </shot/geo.collection:setA>, </shot/looks/softbox_mtl> ]
+        rel material:binding:collection:setB = [ </shot/geo.collection:setB>, </shot/looks/softbox_mtl> ]
+    }
+
+    def Scope "looks"
+    {
+        def Material "softbox_mtl"
+        {
+            token outputs:surface.connect = </shot/looks/softbox_mtl/Surface.outputs:surface>
+
+            def Shader "Surface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.8, 0.8, 0.8)
+                token outputs:surface
+            }
+        }
+    }
+}

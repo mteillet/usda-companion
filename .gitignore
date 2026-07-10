@@ -1,0 +1,14 @@
+# Build output
+out/
+*.tsbuildinfo
+
+# Dependencies
+node_modules/
+
+# Packaged extension
+*.vsix
+
+# Logs / OS cruft
+*.log
+.DS_Store
+Thumbs.db
