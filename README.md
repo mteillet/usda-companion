@@ -114,7 +114,7 @@ command is an array so you can wrap it in your launcher / set env:
 - More lints (naming conventions, dangling relationship targets, unknown prim
   types when all schemas are registered).
 - Schema-aware completion for **multiple-apply** schemas (instance-named
-  `collection:*`), and a `generatedSchema.usda` fallback for custom (`mg*`) types
+  `collection:*`), and a `generatedSchema.usda` fallback for custom types
   not registered in the configured python.
 
 ## Build & develop
