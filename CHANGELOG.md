@@ -5,13 +5,39 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and the
 project uses [Semantic Versioning](https://semver.org/) (pre-1.0, so minor/patch
 distinctions are loose).
 
+## [0.0.22]
+
+### Changed
+- Tidied documentation and setting descriptions — generic examples and wording
+  throughout.
+
+## [0.0.21]
+
+### Fixed
+- **List deactivated Vars** now removes *only* the `active = false` opinion instead
+  of the whole `over` block. A prim that also declares or overrides content keeps
+  everything but its deactivation. `over` scaffolding that ends up completely empty
+  (the selected prim and, with `usda.deactivations.pruneEmptyParents`, an emptied
+  parent) is still cleaned up.
+
+## [0.0.20]
+
+### Fixed
+- Syntax-highlighting cascade with the Animal Logic grammar: a single-quoted
+  string containing `//` or `/*` — e.g. a `pathExpression` /
+  `…:membershipExpression = '//*Foo{isa:"Bar"}'` — was mis-read as a C-style
+  comment, turning the rest of the file the comment colour. USDA Companion now
+  ships a TextMate **injection** that claims string literals (single, double and
+  triple-quoted) before the comment rules run, so `//` inside a string stays part
+  of the string. Injects into `source.usd` and `source.usda`; harmless if the base
+  grammar isn't present.
+
 ## [0.0.19]
 
 ### Changed
-- Documentation and the bundled `sample.usda` now use standard USD schemas
-  (UsdLux `SphereLight`, `UsdPreviewSurface`) and a generic `asset:` example
-  scheme. No behavioural change — the extension is schema/renderer agnostic and
-  driven entirely by the `usda.*.command` settings.
+- The bundled `sample.usda` uses standard USD schemas (UsdLux `SphereLight`,
+  `UsdPreviewSurface`) and generic example paths. The extension is schema- and
+  renderer-agnostic: every external tool is a configurable `usda.*.command`.
 
 ## [0.0.18]
 

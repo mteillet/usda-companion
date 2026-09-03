@@ -1,0 +1,54 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "scopeName": "usda-companion.usd.strings.injection",
+  "injectionSelector": "L:source.usd -comment -string, L:source.usda -comment -string",
+  "patterns": [
+    { "include": "#usd-strings" }
+  ],
+  "repository": {
+    "usd-strings": {
+      "patterns": [
+        { "include": "#triple-double" },
+        { "include": "#triple-single" },
+        { "include": "#double" },
+        { "include": "#single" }
+      ]
+    },
+    "triple-double": {
+      "name": "string.quoted.triple.double.usd",
+      "begin": "\"\"\"",
+      "end": "\"\"\"",
+      "beginCaptures": { "0": { "name": "punctuation.definition.string.begin.usd" } },
+      "endCaptures": { "0": { "name": "punctuation.definition.string.end.usd" } },
+      "patterns": [ { "include": "#escape" } ]
+    },
+    "triple-single": {
+      "name": "string.quoted.triple.single.usd",
+      "begin": "'''",
+      "end": "'''",
+      "beginCaptures": { "0": { "name": "punctuation.definition.string.begin.usd" } },
+      "endCaptures": { "0": { "name": "punctuation.definition.string.end.usd" } },
+      "patterns": [ { "include": "#escape" } ]
+    },
+    "double": {
+      "name": "string.quoted.double.usd",
+      "begin": "\"",
+      "end": "\"",
+      "beginCaptures": { "0": { "name": "punctuation.definition.string.begin.usd" } },
+      "endCaptures": { "0": { "name": "punctuation.definition.string.end.usd" } },
+      "patterns": [ { "include": "#escape" } ]
+    },
+    "single": {
+      "name": "string.quoted.single.usd",
+      "begin": "'",
+      "end": "'",
+      "beginCaptures": { "0": { "name": "punctuation.definition.string.begin.usd" } },
+      "endCaptures": { "0": { "name": "punctuation.definition.string.end.usd" } },
+      "patterns": [ { "include": "#escape" } ]
+    },
+    "escape": {
+      "name": "constant.character.escape.usd",
+      "match": "\\\\."
+    }
+  }
+}

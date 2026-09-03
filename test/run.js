@@ -116,6 +116,39 @@ console.log('deactivations');
   ok('ignores a commented-out active = false',
     findDeactivations('#usda 1.0\nover "c" (\n  # active = false\n  kind = "group"\n)\n{\n}\n').length === 0);
   ok('ignores active = true', findDeactivations('#usda 1.0\nover "z" ( active = true ) {}\n').length === 0);
+
+  // A deactivated prim that ALSO declares/overrides content: keep the content,
+  // strip only the deactivation (regression: we used to delete the whole block).
+  const withBody = '#usda 1.0\n' +
+    'over "Vars"\n{\n' +
+    '    over "key" (\n        active = false\n    )\n    {\n' +
+    '        float customExposure = 2.0\n        color3f myColor = (1, 0, 0)\n' +
+    '    }\n}\n';
+  {
+    const f = findDeactivations(withBody);
+    const out = removeDeactivations(withBody, f, true);
+    ok('block with content is kept', /over "key"/.test(out));
+    ok('its declarations are preserved', /customExposure/.test(out) && /myColor/.test(out));
+    ok('only active = false is removed', !/active\s*=\s*false/.test(out));
+    ok('parent kept (child not emptied)', /over "Vars"/.test(out));
+  }
+
+  // Extra metadata beside active = false: keep the other metadata.
+  const multiMeta = '#usda 1.0\nover "k" (\n    active = false\n    kind = "group"\n)\n{\n}\n';
+  {
+    const out = removeDeactivations(multiMeta, findDeactivations(multiMeta), true);
+    ok('keeps sibling metadata (kind)', /kind\s*=\s*"group"/.test(out));
+    ok('drops active = false', !/active\s*=\s*false/.test(out));
+    ok('keeps the over (still has metadata)', /over "k"/.test(out));
+  }
+
+  // Pure empty scaffolding still gets cleaned up entirely.
+  const emptyScaffold = '#usda 1.0\nover "Vars"\n{\n    over "key" (\n        active = false\n    )\n    {\n    }\n}\n';
+  {
+    const out = removeDeactivations(emptyScaffold, findDeactivations(emptyScaffold), true);
+    ok('empty deactivation block is removed', !/over "key"/.test(out));
+    ok('emptied parent is pruned', !/over "Vars"/.test(out));
+  }
 }
 
 console.log(`\n${passed} passed, ${failed} failed`);

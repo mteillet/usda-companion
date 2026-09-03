@@ -3,8 +3,8 @@
   "displayName": "USDA Companion",
   "description": "Outline, folding and tooling that fills the gaps of the Animal Logic USD highlighter for .usda files.",
   "icon": "icon.png",
-  "version": "0.0.19",
-  "publisher": "usda-companion",
+  "version": "0.0.22",
+  "publisher": "mteillet",
   "license": "MIT",
   "engines": {
     "vscode": "^1.75.0"
@@ -23,7 +23,7 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/TONPSEUDO/usda-companion"
+    "url": "https://github.com/mteillet/usda-companion"
   },
   "main": "./out/extension.js",
   "activationEvents": [
@@ -92,7 +92,7 @@
             "type": "string"
           },
           "default": [],
-          "markdownDescription": "Paths to `generatedSchema.usda` files describing custom schemas (e.g. your `mg`-prefixed types). Used by upcoming schema-aware completion/hover (P1)."
+          "markdownDescription": "Paths to `generatedSchema.usda` files describing custom schemas, used as a fallback for schema-aware completion/hover when those types aren't available from the configured Python."
         },
         "usda.fold.propertyGroups": {
           "type": "array",
@@ -248,6 +248,16 @@
         ],
         "configuration": "./language-configuration.json"
       }
+    ],
+    "grammars": [
+      {
+        "scopeName": "usda-companion.usd.strings.injection",
+        "path": "./syntaxes/usd-string-injection.tmLanguage.json",
+        "injectTo": [
+          "source.usd",
+          "source.usda"
+        ]
+      }
     ]
   },
   "scripts": {
@@ -264,7 +274,7 @@
     "typescript": "^5.4.0"
   },
   "bugs": {
-    "url": "https://github.com/TONPSEUDO/usda-companion/issues"
+    "url": "https://github.com/mteillet/usda-companion/issues"
   },
-  "homepage": "https://github.com/TONPSEUDO/usda-companion#readme"
+  "homepage": "https://github.com/mteillet/usda-companion#readme"
 }

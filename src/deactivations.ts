@@ -161,11 +161,44 @@ function dropNested(ranges: LineRange[]): LineRange[] {
 }
 
 /**
- * Delete the given deactivation blocks and, optionally, any now-empty `over`
- * scaffolding that used to hold them (e.g. an `over "Vars" {}` left behind).
- * Pruning is deliberately conservative: only `over` prims that are ancestors of
- * a deleted block, carry no metadata of their own, and end up with an empty body.
- * Pure — returns the new document text.
+ * Remove only the `active = false` opinion from a prim's header, keeping any other
+ * metadata and the whole `{ ... }` body. Returns the replacement lines for the
+ * header span [startLine .. openBraceLine] and that end line. Pure.
+ */
+function stripActiveFalse(lines: string[], startLine: number): { newLines: string[]; endLine: number } {
+  const open = findOpenBrace(lines, startLine);
+  const endLine = open ? open.line : startLine;
+  const endCol = open ? open.col : lines[endLine].length;
+
+  const parts: string[] = [];
+  for (let ln = startLine; ln <= endLine; ln++) {
+    parts.push(ln === endLine ? lines[ln].slice(0, endCol) : lines[ln]);
+  }
+  let prefix = parts.join('\n');
+  const tail = open ? lines[endLine].slice(endCol) : '';
+
+  const before = prefix;
+  // (a) the parens hold nothing but `active = false` -> drop the whole `( ... )`
+  prefix = prefix.replace(/\(\s*active\s*=\s*false\s*\)/, '');
+  if (prefix === before) {
+    // (b) drop just the `active = false` entry (with an optional trailing comment)
+    prefix = prefix.replace(/\n?[ \t]*active[ \t]*=[ \t]*false\b[ \t]*(?:#[^\n]*)?(?=\n|$)/, '');
+    prefix = prefix.replace(/\(\s*\)/, ''); // parens emptied by the removal
+  }
+
+  let combined = prefix + tail;
+  combined = combined.replace(/(\S)[ \t]{2,}(\{)/g, '$1 $2'); // tidy `over "x"   {}` -> `over "x" {}`
+  const newLines = combined.split('\n').map(s => s.replace(/[ \t]+$/, ''));
+  return { newLines, endLine };
+}
+
+/**
+ * Remove the `active = false` opinion from each selected prim — never the rest of
+ * the block. Any other metadata and the body are kept intact, so a prim that also
+ * declares/overrides things survives (only its deactivation is lifted). Afterwards,
+ * `over` prims that are now completely empty scaffolding are cleaned up: the
+ * selected prims themselves, and — when `pruneEmptyParents` is on — their empty
+ * `over` ancestors (e.g. an `over "Vars" {}` left behind). Pure.
  */
 export function removeDeactivations(text: string, targets: Deactivation[], pruneEmptyParents = true): string {
   if (targets.length === 0) return text;
@@ -173,32 +206,38 @@ export function removeDeactivations(text: string, targets: Deactivation[], prune
   const eol = text.includes('\r\n') ? '\r\n' : '\n';
   let lines = text.split(/\r?\n/);
 
-  // Ancestor paths of everything we delete: prune candidates, longest first.
-  const ancestors = new Set<string>();
-  for (const t of targets) {
-    let p = t.parentPath;
-    while (p && p !== '/') { ancestors.add(p); p = p.slice(0, p.lastIndexOf('/')) || '/'; }
+  // Pass 1 — strip `active = false`. Bottom-up so earlier line indices stay valid.
+  for (const t of [...targets].sort((a, b) => b.startLine - a.startLine)) {
+    const { newLines, endLine } = stripActiveFalse(lines, t.startLine);
+    lines.splice(t.startLine, endLine - t.startLine + 1, ...newLines);
   }
 
-  const first = deleteLines(lines, dropNested(targets.map(t => ({ startLine: t.startLine, endLine: t.endLine }))));
-  lines = collapseBlanksAt(first.lines, first.junctions);
-
-  if (pruneEmptyParents && ancestors.size) {
-    // Re-parse after each pass: deleting a parent can empty its own parent.
-    for (let pass = 0; pass < 16; pass++) {
-      const cur = lines.join(eol);
-      const roots = parseUsda(cur);
-      const curLines = cur.split(/\r?\n/);
-      const doomed: LineRange[] = [];
-      walk(roots, '', (n, path) => {
-        if (n.specifier !== 'over' || !ancestors.has(path)) return;
-        if (HAS_METADATA_RE.test(headerText(curLines, n))) return; // keeps its own metadata: leave it
-        if (hasEmptyBody(curLines, n)) doomed.push({ startLine: n.startLine, endLine: n.endLine });
-      });
-      if (!doomed.length) break;
-      const pass2 = deleteLines(curLines, dropNested(doomed));
-      lines = collapseBlanksAt(pass2.lines, pass2.junctions);
+  // Paths that may be removed *if* they end up empty: the selected prims, plus
+  // their `over` ancestors when pruning is enabled.
+  const removable = new Set<string>(targets.map(t => t.path));
+  if (pruneEmptyParents) {
+    for (const t of targets) {
+      let p = t.parentPath;
+      while (p && p !== '/') { removable.add(p); p = p.slice(0, p.lastIndexOf('/')) || '/'; }
     }
+  }
+
+  // Pass 2 — drop now-empty `over` scaffolding. Re-parse each pass, since emptying
+  // a child can empty its parent. Only pure `over` scaffolding is touched: no
+  // metadata of its own and an empty body. Blocks with content are left alone.
+  for (let pass = 0; pass < 32; pass++) {
+    const cur = lines.join(eol);
+    const roots = parseUsda(cur);
+    const curLines = cur.split(/\r?\n/);
+    const doomed: LineRange[] = [];
+    walk(roots, '', (n, path) => {
+      if (n.specifier !== 'over' || !removable.has(path)) return;
+      if (HAS_METADATA_RE.test(headerText(curLines, n))) return; // keeps its own metadata
+      if (hasEmptyBody(curLines, n)) doomed.push({ startLine: n.startLine, endLine: n.endLine });
+    });
+    if (!doomed.length) break;
+    const res = deleteLines(curLines, dropNested(doomed));
+    lines = collapseBlanksAt(res.lines, res.junctions);
   }
 
   return lines.join(eol);
@@ -238,7 +277,7 @@ export async function listDeactivations(): Promise<void> {
 
   const qp = vscode.window.createQuickPick<Item>();
   qp.title = `Deactivated prims (active = false) — ${found.length} found`;
-  qp.placeholder = 'Check the ones to delete, then press Enter (Esc to cancel)';
+  qp.placeholder = 'Check the ones to re-activate (removes active = false), then Enter (Esc to cancel)';
   qp.items = items;
   qp.canSelectMany = true;
   qp.matchOnDescription = true;
@@ -262,13 +301,17 @@ export async function listDeactivations(): Promise<void> {
   if (!chosen || chosen.length === 0) return;
 
   const prune = vscode.workspace.getConfiguration('usda').get<boolean>('deactivations.pruneEmptyParents', true);
-  const label = chosen.length === 1 ? `"${chosen[0].deac.name}"` : `${chosen.length} blocks`;
+  const label = chosen.length === 1 ? `"${chosen[0].deac.name}"` : `${chosen.length} prims`;
   const confirm = await vscode.window.showWarningMessage(
-    `Delete ${label}?`,
-    { modal: true, detail: prune ? 'Empty `over` parents left behind are removed too.' : undefined },
-    'Delete'
+    `Remove \`active = false\` from ${label}?`,
+    {
+      modal: true,
+      detail: 'Only the deactivation is removed; any other metadata or contents are kept. '
+        + (prune ? 'Emptied `over` scaffolding (including a leftover parent) is cleaned up.' : ''),
+    },
+    'Remove'
   );
-  if (confirm !== 'Delete') return;
+  if (confirm !== 'Remove') return;
 
   // Re-read the text at apply time in case the document changed while picking.
   const current = doc.getText();
@@ -276,7 +319,7 @@ export async function listDeactivations(): Promise<void> {
   const wanted = new Set(chosen.map(c => c.deac.path));
   const targets = fresh.filter(d => wanted.has(d.path));
   if (targets.length === 0) {
-    vscode.window.showWarningMessage('USDA: the selected blocks no longer exist (file changed).');
+    vscode.window.showWarningMessage('USDA: the selected prims no longer exist (file changed).');
     return;
   }
 
@@ -286,7 +329,7 @@ export async function listDeactivations(): Promise<void> {
   edit.replace(doc.uri, whole, next);
   const applied = await vscode.workspace.applyEdit(edit);
   if (applied) {
-    vscode.window.setStatusBarMessage(`USDA: deleted ${targets.length} deactivation block(s)`, 4000);
+    vscode.window.setStatusBarMessage(`USDA: removed active = false from ${targets.length} prim(s)`, 4000);
   } else {
     vscode.window.showErrorMessage('USDA: could not apply the edit.');
   }
