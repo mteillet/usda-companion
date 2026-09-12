@@ -21,7 +21,7 @@ const { propertyGroupRanges } = require(path.join(OUT, 'groups.js'));
 const { lintUsda } = require(path.join(OUT, 'lint.js'));
 const { buildRelations } = require(path.join(OUT, 'relations.js'));
 const { scoreUsdCandidate, isUsdPath } = require(path.join(OUT, 'jump.js'));
-const { findDeactivations, removeDeactivations } = require(path.join(OUT, 'deactivations.js'));
+const { findDeactivations, removeDeactivations, partitionByPrefix } = require(path.join(OUT, 'deactivations.js'));
 
 console.log('parse');
 {
@@ -149,6 +149,47 @@ console.log('deactivations');
     ok('empty deactivation block is removed', !/over "key"/.test(out));
     ok('emptied parent is pruned', !/over "Vars"/.test(out));
   }
+}
+
+console.log('deactivation grouping');
+{
+  const doc = '#usda 1.0\n' +
+    'over "Vars"\n{\n' +
+    '    over "LGT_key" ( active = false ) {}\n' +
+    '    over "bgGeo" ( active = false ) {}\n' +
+    '    over "LGT_fill" ( active = false ) {}\n' +
+    '    over "lgt_rim" ( active = false ) {}\n' +
+    '}\n';
+  const found = findDeactivations(doc);
+  ok('finds all four', found.length === 4);
+
+  const { matching, others } = partitionByPrefix(found, 'LGT_');
+  ok('groups the LGT_ prims', matching.length === 2);
+  ok('matching are the prefixed ones', matching.every(d => d.name.startsWith('LGT_')));
+  ok('keeps document order in the group', matching[0].name === 'LGT_key' && matching[1].name === 'LGT_fill');
+  ok('everything else lands in others', others.length === 2);
+  ok('matching is case-sensitive', others.some(d => d.name === 'lgt_rim'));
+  ok('no prim is lost or duplicated', matching.length + others.length === found.length);
+
+  // An empty prefix disables the split.
+  const flat = partitionByPrefix(found, '');
+  ok('empty prefix groups nothing', flat.matching.length === 0 && flat.others.length === 4);
+
+  // A prefix nothing matches leaves one populated group.
+  const none = partitionByPrefix(found, 'CAM_');
+  ok('unmatched prefix yields an empty group', none.matching.length === 0 && none.others.length === 4);
+
+  // All-matching: `others` stays empty.
+  const allDoc = '#usda 1.0\nover "LGT_a" ( active = false ) {}\nover "LGT_b" ( active = false ) {}\n';
+  const all = partitionByPrefix(findDeactivations(allDoc), 'LGT_');
+  ok('all-prefixed leaves others empty', all.matching.length === 2 && all.others.length === 0);
+
+  // Grouping must not disturb the edit itself: removing only the LGT_ group
+  // leaves the others deactivated.
+  const out = removeDeactivations(doc, matching, true);
+  ok('selected group is re-activated', !/LGT_key/.test(out) && !/LGT_fill/.test(out));
+  ok('untouched prims keep active = false', /"bgGeo" \( active = false \)/.test(out) && /"lgt_rim" \( active = false \)/.test(out));
+  ok('parent survives (still has content)', /over "Vars"/.test(out));
 }
 
 console.log(`\n${passed} passed, ${failed} failed`);
