@@ -14,5 +14,9 @@ const Uri = {
   file: (p) => ({ scheme: 'file', fsPath: p, path: p, toString: () => 'file://' + p }),
 };
 const FileType = { Unknown: 0, File: 1, Directory: 2, SymbolicLink: 64 };
+const QuickPickItemKind = { Separator: -1, Default: 0 };
+class ThemeIcon {
+  constructor(id) { this.id = id; }
+}
 
-module.exports = { Position, Range, Uri, FileType };
+module.exports = { Position, Range, Uri, FileType, QuickPickItemKind, ThemeIcon };

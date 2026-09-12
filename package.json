@@ -3,7 +3,7 @@
   "displayName": "USDA Companion",
   "description": "Outline, folding and tooling that fills the gaps of the Animal Logic USD highlighter for .usda files.",
   "icon": "icon.png",
-  "version": "0.0.22",
+  "version": "0.0.23",
   "publisher": "mteillet",
   "license": "MIT",
   "engines": {
@@ -146,6 +146,11 @@
           "type": "boolean",
           "default": true,
           "markdownDescription": "After deleting deactivation blocks (`active = false`), also remove the `over` scaffolding that held them if it is now empty (e.g. a leftover `over \"Vars\" {}`). Only `over` prims that were ancestors of a deleted block, carry no metadata of their own, and end up with an empty body are removed."
+        },
+        "usda.deactivations.groupPrefix": {
+          "type": "string",
+          "default": "LGT_",
+          "markdownDescription": "Prim-name prefix that splits the **List deactivated Vars** picker (`Ctrl/Cmd+Alt+P`) in two: prims whose name starts with it are listed in a first section, everything else in a second. The picker's title button ticks that first group in one click. Matching is case-sensitive; set to an empty string to list everything ungrouped."
         }
       }
     },

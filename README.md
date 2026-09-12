@@ -34,9 +34,11 @@ commands that shell out to your USD CLI tools.
 - **List deactivated Vars** (`Ctrl/Cmd+Alt+P`) — finds every prim deactivated via
   `active = false` (the classic `over "Vars" { over "someLight" ( active = false ) {} }`
   scaffolding), shows them in a checkable quick pick with their full prim path, previews
-  each in the editor as you arrow through, and **deletes the ones you tick** in a single
-  undoable edit. Empty `over` parents left behind are cleaned up
-  (`usda.deactivations.pruneEmptyParents`, on by default).
+  each in the editor as you arrow through, and **re-activates the ones you tick** in a
+  single undoable edit. The list is split in two sections — prims whose name starts with
+  `usda.deactivations.groupPrefix` (`LGT_` by default) first, everything else after — and
+  the picker's title button ticks that whole first group at once. Empty `over` parents
+  left behind are cleaned up (`usda.deactivations.pruneEmptyParents`, on by default).
 - **Jump to USD File** (`Ctrl/Cmd+Alt+J`) — jumps to the `.usd`/`.usda` among your
   **open tabs** (one match opens directly; several show a quick picker). With no
   USD tab open it falls back to the workspace; right-click a folder in the Explorer

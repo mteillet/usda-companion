@@ -243,6 +243,22 @@ export function removeDeactivations(text: string, targets: Deactivation[], prune
   return lines.join(eol);
 }
 
+/**
+ * Split deactivations into those whose prim *name* starts with `prefix` and the
+ * rest, keeping document order inside each group. An empty prefix disables the
+ * split: everything comes back as `others`. Pure.
+ */
+export function partitionByPrefix(
+  found: Deactivation[],
+  prefix: string
+): { matching: Deactivation[]; others: Deactivation[] } {
+  if (!prefix) return { matching: [], others: found.slice() };
+  const matching: Deactivation[] = [];
+  const others: Deactivation[] = [];
+  for (const d of found) (d.name.startsWith(prefix) ? matching : others).push(d);
+  return { matching, others };
+}
+
 // ---------------------------------------------------------------------------
 // VS Code wiring
 // ---------------------------------------------------------------------------
@@ -251,8 +267,9 @@ function isUsdDoc(doc: vscode.TextDocument): boolean {
   return doc.languageId === 'usd' || /\.usda?$/i.test(doc.fileName);
 }
 
+/** A picker row. Section separators carry no `deac`. */
 interface Item extends vscode.QuickPickItem {
-  deac: Deactivation;
+  deac?: Deactivation;
 }
 
 export async function listDeactivations(): Promise<void> {
@@ -268,12 +285,27 @@ export async function listDeactivations(): Promise<void> {
     return;
   }
 
-  const items: Item[] = found.map(d => ({
+  const prefix = vscode.workspace.getConfiguration('usda').get<string>('deactivations.groupPrefix', 'LGT_');
+  const { matching, others } = partitionByPrefix(found, prefix);
+
+  const toItem = (d: Deactivation): Item => ({
     label: `$(circle-slash) ${d.name}`,
     description: d.parentPath === '/' ? '' : d.parentPath,
     detail: `${d.specifier} — line ${d.startLine + 1}${d.endLine > d.startLine ? `–${d.endLine + 1}` : ''}`,
     deac: d,
-  }));
+  });
+  const separator = (label: string): Item => ({ label, kind: vscode.QuickPickItemKind.Separator });
+
+  const matchItems = matching.map(toItem);
+  const otherItems = others.map(toItem);
+  // Label the two sections only when both are populated — a single group reads
+  // better with no header at all.
+  const items: Item[] = matchItems.length && otherItems.length
+    ? [
+        separator(`${prefix} — ${matchItems.length}`), ...matchItems,
+        separator(`Other — ${otherItems.length}`), ...otherItems,
+      ]
+    : [...matchItems, ...otherItems];
 
   const qp = vscode.window.createQuickPick<Item>();
   qp.title = `Deactivated prims (active = false) — ${found.length} found`;
@@ -282,6 +314,17 @@ export async function listDeactivations(): Promise<void> {
   qp.canSelectMany = true;
   qp.matchOnDescription = true;
   qp.matchOnDetail = true;
+
+  // Title button: tick the whole prefixed group in one click. (The check-all box
+  // beside the filter is VS Code's own widget and still ticks every row.)
+  if (matchItems.length) {
+    const selectPrefixed: vscode.QuickInputButton = {
+      iconPath: new vscode.ThemeIcon('check-all'),
+      tooltip: `Select all ${prefix} (${matchItems.length})`,
+    };
+    qp.buttons = [selectPrefixed];
+    qp.onDidTriggerButton(b => { if (b === selectPrefixed) qp.selectedItems = matchItems; });
+  }
 
   // Follow the highlighted entry in the editor.
   qp.onDidChangeActive(active => {
@@ -299,9 +342,11 @@ export async function listDeactivations(): Promise<void> {
   });
 
   if (!chosen || chosen.length === 0) return;
+  const picked = chosen.filter((c): c is Item & { deac: Deactivation } => !!c.deac);
+  if (picked.length === 0) return;
 
   const prune = vscode.workspace.getConfiguration('usda').get<boolean>('deactivations.pruneEmptyParents', true);
-  const label = chosen.length === 1 ? `"${chosen[0].deac.name}"` : `${chosen.length} prims`;
+  const label = picked.length === 1 ? `"${picked[0].deac.name}"` : `${picked.length} prims`;
   const confirm = await vscode.window.showWarningMessage(
     `Remove \`active = false\` from ${label}?`,
     {
@@ -316,7 +361,7 @@ export async function listDeactivations(): Promise<void> {
   // Re-read the text at apply time in case the document changed while picking.
   const current = doc.getText();
   const fresh = findDeactivations(current);
-  const wanted = new Set(chosen.map(c => c.deac.path));
+  const wanted = new Set(picked.map(c => c.deac.path));
   const targets = fresh.filter(d => wanted.has(d.path));
   if (targets.length === 0) {
     vscode.window.showWarningMessage('USDA: the selected prims no longer exist (file changed).');

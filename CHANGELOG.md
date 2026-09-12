@@ -5,6 +5,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and the
 project uses [Semantic Versioning](https://semver.org/) (pre-1.0, so minor/patch
 distinctions are loose).
 
+## [0.0.23]
+
+### Added
+- **List deactivated Vars** (`Ctrl/Cmd+Alt+P`) now groups its results in two labelled
+  sections: prims whose name starts with `usda.deactivations.groupPrefix` (`LGT_` by
+  default) first, everything else after. A single group is listed without headers.
+- A title button on that picker ticks the whole prefixed group in one click
+  (*Select all `LGT_`*). Note that the check-all box beside the filter field belongs
+  to VS Code itself and still ticks every row — an extension cannot redefine it.
+- `usda.deactivations.groupPrefix` — the prefix driving both. Case-sensitive; set it
+  to an empty string to list everything ungrouped as before.
+
 ## [0.0.22]
 
 ### Changed
