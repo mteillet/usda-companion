@@ -5,6 +5,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and the
 project uses [Semantic Versioning](https://semver.org/) (pre-1.0, so minor/patch
 distinctions are loose).
 
+## [0.0.24]
+
+### Changed
+- The **List deactivated Vars** picker now carries **one title button per section**
+  instead of a single one: *Select all `LGT_`* and *Select all Other*. Each ticks its
+  own group and leaves the other section's ticks untouched, so lifting every `LGT_*`
+  deactivation is one click plus Enter. Pressing a button again clears just that group,
+  and a partially-ticked group completes rather than clearing.
+
 ## [0.0.23]
 
 ### Added

@@ -21,7 +21,7 @@ const { propertyGroupRanges } = require(path.join(OUT, 'groups.js'));
 const { lintUsda } = require(path.join(OUT, 'lint.js'));
 const { buildRelations } = require(path.join(OUT, 'relations.js'));
 const { scoreUsdCandidate, isUsdPath } = require(path.join(OUT, 'jump.js'));
-const { findDeactivations, removeDeactivations, partitionByPrefix } = require(path.join(OUT, 'deactivations.js'));
+const { findDeactivations, removeDeactivations, partitionByPrefix, toggleGroup } = require(path.join(OUT, 'deactivations.js'));
 
 console.log('parse');
 {
@@ -190,6 +190,38 @@ console.log('deactivation grouping');
   ok('selected group is re-activated', !/LGT_key/.test(out) && !/LGT_fill/.test(out));
   ok('untouched prims keep active = false', /"bgGeo" \( active = false \)/.test(out) && /"lgt_rim" \( active = false \)/.test(out));
   ok('parent survives (still has content)', /over "Vars"/.test(out));
+}
+
+console.log('group toggle');
+{
+  const lgt = ['LGT_key', 'LGT_fill'];
+  const rest = ['bgGeo', 'lgt_rim'];
+
+  // From an empty selection each button ticks its own group.
+  const onlyLgt = toggleGroup([], lgt);
+  ok('ticks the whole group', onlyLgt.length === 2 && lgt.every(x => onlyLgt.includes(x)));
+
+  // The two groups are independent switches: ticking one keeps the other.
+  const both = toggleGroup(onlyLgt, rest);
+  ok('second group adds without dropping the first', both.length === 4);
+  ok('first group survives', lgt.every(x => both.includes(x)));
+
+  // Pressing the same button again clears only that group.
+  const backToRest = toggleGroup(both, lgt);
+  ok('re-press clears its own group', lgt.every(x => !backToRest.includes(x)));
+  ok('re-press keeps the other group', rest.every(x => backToRest.includes(x)));
+
+  // A partially-ticked group completes rather than clearing.
+  const partial = toggleGroup(['LGT_key'], lgt);
+  ok('partial group completes', partial.length === 2 && partial.includes('LGT_fill'));
+  ok('completing does not duplicate', partial.filter(x => x === 'LGT_key').length === 1);
+
+  // Manual ticks outside any group are never disturbed.
+  const manual = toggleGroup(['bgGeo'], lgt);
+  ok('unrelated ticks are kept', manual.includes('bgGeo') && manual.length === 3);
+
+  ok('empty group is a no-op', toggleGroup(['bgGeo'], []).length === 1);
+  ok('does not mutate the input', (() => { const src = ['bgGeo']; toggleGroup(src, lgt); return src.length === 1; })());
 }
 
 console.log(`\n${passed} passed, ${failed} failed`);
