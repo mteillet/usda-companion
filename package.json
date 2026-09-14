@@ -3,7 +3,7 @@
   "displayName": "USDA Companion",
   "description": "Outline, folding and tooling that fills the gaps of the Animal Logic USD highlighter for .usda files.",
   "icon": "icon.png",
-  "version": "0.0.23",
+  "version": "0.0.24",
   "publisher": "mteillet",
   "license": "MIT",
   "engines": {

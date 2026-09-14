@@ -259,6 +259,23 @@ export function partitionByPrefix(
   return { matching, others };
 }
 
+/**
+ * Toggle a whole group inside a selection: tick every row of `group` while any is
+ * still unticked, untick them all once the group is complete. Rows outside the
+ * group keep their state, so the groups act as independent switches. Pure.
+ */
+export function toggleGroup<T>(selected: readonly T[], group: readonly T[]): T[] {
+  if (group.length === 0) return selected.slice();
+  const picked = new Set(selected);
+  if (group.every(g => picked.has(g))) {
+    const inGroup = new Set(group);
+    return selected.filter(s => !inGroup.has(s));
+  }
+  const out = selected.slice();
+  for (const g of group) if (!picked.has(g)) out.push(g);
+  return out;
+}
+
 // ---------------------------------------------------------------------------
 // VS Code wiring
 // ---------------------------------------------------------------------------
@@ -315,15 +332,26 @@ export async function listDeactivations(): Promise<void> {
   qp.matchOnDescription = true;
   qp.matchOnDetail = true;
 
-  // Title button: tick the whole prefixed group in one click. (The check-all box
-  // beside the filter is VS Code's own widget and still ticks every row.)
-  if (matchItems.length) {
-    const selectPrefixed: vscode.QuickInputButton = {
-      iconPath: new vscode.ThemeIcon('check-all'),
-      tooltip: `Select all ${prefix} (${matchItems.length})`,
-    };
-    qp.buttons = [selectPrefixed];
-    qp.onDidTriggerButton(b => { if (b === selectPrefixed) qp.selectedItems = matchItems; });
+  // One title button per section: ticks that whole group in a click, leaving the
+  // other group's ticks alone, and unticks it when pressed again. (The check-all
+  // box beside the filter is VS Code's own widget and still ticks every row.)
+  const groups: { button: vscode.QuickInputButton; rows: Item[] }[] = [];
+  const addGroup = (rows: Item[], icon: string, what: string) => {
+    if (!rows.length) return;
+    groups.push({
+      button: { iconPath: new vscode.ThemeIcon(icon), tooltip: `Select all ${what} (${rows.length}) — again to clear` },
+      rows,
+    });
+  };
+  addGroup(matchItems, 'check-all', prefix);
+  addGroup(otherItems, 'checklist', 'Other');
+
+  if (groups.length) {
+    qp.buttons = groups.map(g => g.button);
+    qp.onDidTriggerButton(b => {
+      const group = groups.find(g => g.button === b);
+      if (group) qp.selectedItems = toggleGroup(qp.selectedItems, group.rows);
+    });
   }
 
   // Follow the highlighted entry in the editor.
